@@ -1,0 +1,81 @@
+name: Terraform Lint and Validate
+description: 'Run terraform validate, fmt, tflint and checkov on the given entry point'
+
+inputs:
+  terraform_version:
+    description: 'The version of Terraform to use'
+    default: 'latest'
+    required: false
+  tflint_version:
+    description: 'The version of tflint to use'
+    default: 'latest'
+    required: false
+  entrypoint:
+    description: 'The entry point for the Terraform code'
+    default: './terraform'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.ref }}
+
+    - name: Check for terraform version mismatch
+      shell: bash
+      run: |
+        if [ -f .terraform-version ]; then
+          TF_VERSION=$(cat .terraform-version)
+          if [ "$TF_VERSION" != "${{ inputs.terraform_version }}" ]; then
+            echo -e "\033[1;31mError: terraform version in .terraform-version file does not match the given version."
+            exit 1
+          fi
+        fi
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v4
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+
+    - name: Run a Terraform init
+      shell: bash
+      run: terraform init
+      working-directory: ${{ inputs.entrypoint }}
+
+    - name: Run a Terraform validate
+      shell: bash
+      run: terraform validate
+      working-directory: ${{ inputs.entrypoint }}
+
+    - name: Run a Terraform format check
+      shell: bash
+      run: terraform fmt -check=true -diff=true
+      working-directory: ${{ inputs.entrypoint }}
+
+    - name: Generate Terraform docs
+      uses: terraform-docs/gh-actions@v1.4.1
+      with:
+        working-dir: ${{ inputs.entrypoint }}
+        config-file: .terraform-docs.yml
+        output-file: README.md
+        output-method: inject
+        fail-on-diff: true
+
+    - name: Setup TFLint
+      uses: terraform-linters/setup-tflint@v4
+      with:
+        tflint_version: ${{ inputs.tflint_version }}
+
+    - name: Run TFLint
+      shell: bash
+      run: tflint -f compact
+      working-directory: ${{ inputs.entrypoint }}
+
+    - name: Test Terraform with Checkov
+      uses: bridgecrewio/checkov-action@v12
+      with:
+        directory: ${{ inputs.entrypoint }}
+        framework: terraform
+
