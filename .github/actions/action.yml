@@ -39,6 +39,10 @@ runs:
       with:
         terraform_version: ${{ inputs.terraform_version }}
 
+    - name: Remove azure backend
+      shell: bash
+      run: rm ./backend.tf
+
     - name: Run a Terraform init
       shell: bash
       run: terraform init
