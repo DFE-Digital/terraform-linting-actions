@@ -12,7 +12,7 @@ inputs:
     required: false
   entrypoint:
     description: 'The entry point for the Terraform code'
-    default: './terraform'
+    default: '.'
     required: false
 
 runs:
@@ -33,11 +33,17 @@ runs:
             exit 1
           fi
         fi
+      working-directory: ${{ inputs.entrypoint }}
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v4
       with:
         terraform_version: ${{ inputs.terraform_version }}
+
+    - name: Remove azure backend
+      shell: bash
+      run: rm ./backend.tf
+      working-directory: ${{ inputs.entrypoint }}
 
     - name: Run a Terraform init
       shell: bash
@@ -54,14 +60,27 @@ runs:
       run: terraform fmt -check=true -diff=true
       working-directory: ${{ inputs.entrypoint }}
 
-    - name: Generate Terraform docs
-      uses: terraform-docs/gh-actions@v1.4.1
-      with:
-        working-dir: ${{ inputs.entrypoint }}
-        config-file: .terraform-docs.yml
-        output-file: README.md
-        output-method: inject
-        fail-on-diff: true
+    - name: Install terraform-docs
+      shell: bash
+      run: |
+        curl -Lo /tmp/terraform-docs.tar.gz \
+          https://github.com/terraform-docs/terraform-docs/releases/download/v0.23.0/terraform-docs-v0.23.0-Linux-amd64.tar.gz
+        tar -xzf /tmp/terraform-docs.tar.gz -C /usr/local/bin terraform-docs
+        terraform-docs --version
+
+    - name: Generate Terraform documentation
+      shell: bash
+      run: terraform-docs --config .terraform-docs.yml --output-file README.md .
+      working-directory: ${{ inputs.entrypoint }}
+
+    - name: Fail if documentation is out of date
+      shell: bash
+      run: |
+        if ! git diff --exit-code README.md; then
+          echo "Documentation is out of date. Run 'terraform-docs --config .terraform-docs.yml --output-file README.md .' and commit the result."
+          exit 1
+        fi
+      working-directory: ${{ inputs.entrypoint }}
 
     - name: Setup TFLint
       uses: terraform-linters/setup-tflint@v4
