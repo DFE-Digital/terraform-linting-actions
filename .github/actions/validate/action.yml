@@ -35,6 +35,28 @@ runs:
         fi
       working-directory: ${{ inputs.entrypoint }}
 
+    - name: Install terraform-docs
+      shell: bash
+      run: |
+        curl -Lo /tmp/terraform-docs.tar.gz \
+          https://github.com/terraform-docs/terraform-docs/releases/download/v0.24.0/terraform-docs-v0.24.0-Linux-amd64.tar.gz
+        tar -xzf /tmp/terraform-docs.tar.gz -C /usr/local/bin terraform-docs
+        terraform-docs --version
+
+    - name: Generate Terraform documentation
+      shell: bash
+      run: terraform-docs --config .terraform-docs.yml --output-file README.md .
+      working-directory: ${{ inputs.entrypoint }}
+
+    - name: Fail if documentation is out of date
+      shell: bash
+      run: |
+        if ! git diff --exit-code README.md; then
+          echo "Documentation is out of date. Run 'terraform-docs --config .terraform-docs.yml --output-file README.md .' and commit the result."
+          exit 1
+        fi
+      working-directory: ${{ inputs.entrypoint }}
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v4
       with:
@@ -61,19 +83,6 @@ runs:
     - name: Run a Terraform format check
       shell: bash
       run: terraform fmt -check=true -diff=true
-      working-directory: ${{ inputs.entrypoint }}
-
-    - name: Install terraform-docs
-      shell: bash
-      run: |
-        curl -Lo /tmp/terraform-docs.tar.gz \
-          https://github.com/terraform-docs/terraform-docs/releases/download/v0.24.0/terraform-docs-v0.24.0-Linux-amd64.tar.gz
-        tar -xzf /tmp/terraform-docs.tar.gz -C /usr/local/bin terraform-docs
-        terraform-docs --version
-
-    - name: Generate Terraform documentation
-      shell: bash
-      run: terraform-docs --config .terraform-docs.yml --output-file README.md .
       working-directory: ${{ inputs.entrypoint }}
 
     - name: Fail if documentation is out of date
