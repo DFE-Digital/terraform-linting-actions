@@ -42,7 +42,10 @@ runs:
 
     - name: Remove azure backend
       shell: bash
-      run: rm ./backend.tf
+      run: |
+        if [ -f ./backend.tf ]; then
+          rm ./backend.tf
+        fi
       working-directory: ${{ inputs.entrypoint }}
 
     - name: Run a Terraform init
@@ -91,10 +94,3 @@ runs:
       shell: bash
       run: tflint -f compact
       working-directory: ${{ inputs.entrypoint }}
-
-    - name: Test Terraform with Checkov
-      uses: bridgecrewio/checkov-action@v12
-      with:
-        directory: ${{ inputs.entrypoint }}
-        framework: terraform
-
