@@ -67,7 +67,7 @@ runs:
       shell: bash
       run: |
         curl -Lo /tmp/terraform-docs.tar.gz \
-          https://github.com/terraform-docs/terraform-docs/releases/download/v0.23.0/terraform-docs-v0.23.0-Linux-amd64.tar.gz
+          https://github.com/terraform-docs/terraform-docs/releases/download/v0.24.0/terraform-docs-v0.24.0-Linux-amd64.tar.gz
         tar -xzf /tmp/terraform-docs.tar.gz -C /usr/local/bin terraform-docs
         terraform-docs --version
 
